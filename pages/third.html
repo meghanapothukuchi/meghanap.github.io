@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+  <link rel="stylesheet" href="../css/styles.css">
+  <script src="https://d3js.org/d3.v6.js"></script>
+  <script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2113.6">
+  <style type="text/css">
+    p.p1 {
+      margin: 0.0px 0.0px 0.0px 0.0px;
+      font: 17.0px Courier;
+      color: #eae96f;
+      -webkit-text-stroke: #eae96f;
+      background-color: #2e2e2e
+    }
+
+    span.s1 {
+      font-kerning: none
+    }
+  </style>
+</head>
+
+<body>
+  <h1 id="header">Top 10 Countries with the Highest CO2 Emissions</h1>
+  <p>
+    Below is a bar chart of the top 10 CO2 producing countries. Hover over each one to view the country's Industrial
+    Processes and Product Use (IPPU) emissions, as well as the exact total emissions. The United States' largest CO2
+    contributer is IPPU. How does this compare to other
+    countries around the world?
+  </p>
+  <div id="bar"></div>
+  <div id="tooltip"></div>
+
+  <p>
+    From this bar chart, we can conclude that the United States is the second-largest contributor to CO2 emissions.
+    Although the United States' IPPU emissions are also high, at around 590,000 kt, China's IPPU emissions exceed three
+    times that amount!
+  </p>
+
+  <div class="row">
+    <button onclick="location.href='second.html'" type="button">
+      Prev
+    </button>
+    <h3>3</h3>
+    <button onclick="location.href='fourth.html'" type="button">
+      Next
+    </button>
+  </div>
+</body>
+
+</html>
+
+<script>
+  const margin = { top: 30, right: 30, bottom: 70, left: 60 },
+    width = 800 - margin.left - margin.right,
+    height = 700 - margin.top - margin.bottom;
+
+  const svg = d3.select("#bar")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left + 35}, ${margin.top - 20})`);
+
+  d3.csv("../data/Agrofood_co2_emission.csv", (d) => {
+    if (d['Year'] == 2020 && d['Area'] !== 'China, mainland') {
+      return d
+    }
+  }).then(function (data) {
+    data.sort(function (b, a) {
+      return a['total_emission'] - b['total_emission'];
+    });
+
+    top_10_data = data.slice(0, 11)
+
+    const xScale = d3.scaleBand().range([0, width])
+      .domain(top_10_data.map(d => d['Area']))
+      .padding(0.2)
+
+    svg.append("g")
+      .attr("transform", `translate(0, ${height})`)
+      .call(d3.axisBottom(xScale))
+      .selectAll("text")
+      .attr("transform", "translate(-10,0)rotate(-35)")
+      .style("text-anchor", "end")
+
+    const yScale = d3.scaleLinear().domain([0, 3500000]).range([height, 0])
+    svg.append("g").call(d3.axisLeft(yScale))
+
+    svg.append("text")
+      .attr("transform",
+        "translate(" + (width / 2) + " ," +
+        (height + margin.top + 25) + ")")
+      .style("text-anchor", "middle")
+      .style("font-weight", "bold")
+      .text("Country");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0 - margin.left - 25)
+      .attr("x", 0 - (height / 2))
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .style("font-weight", "bold")
+      .text("Total Emission (in kilotons of CO2)")
+
+    let bars = svg.selectAll("bar")
+      .data(top_10_data)
+      .enter()
+      .append("rect")
+      .attr("x", d => xScale(d.Area))
+      .attr("y", d => yScale(d.total_emission))
+      .attr("width", xScale.bandwidth())
+      .attr("height", d => height - yScale(d.total_emission))
+      .attr("fill", (d) => d['Area'] !== 'United States of America' ? "blue" : "red")
+
+    const tooltip = d3.select("#tooltip");
+    bars.on("mouseover", function (event, d) {
+      const tooltipContent = `
+          Country: ${d['Area']} <br/> 
+          Total Emissions: ${d['total_emission']} kt of CO2 <br/>
+          IPPU: ${d['IPPU']} kt of CO2
+        `;
+      tooltip
+        .style("display", "block")
+        .style("flexDirection", "column")
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 20) + "px")
+        .html(tooltipContent);
+    })
+      .on("mouseout", function () {
+        tooltip.style("display", "none");
+      });
+
+    const annotations = [
+      {
+        note: {
+          label: "United States",
+          title: "This the United States' total CO2 emissions compared other top producing countries.",
+          align: "middle",
+          wrap: 200,
+          padding: 10
+        },
+        x: 100,
+        y: 420,
+        dx: 100,
+        dy: -100
+      }
+    ]
+
+    const makeAnnotations = d3.annotation().annotations(annotations)
+    svg.append("g").call(makeAnnotations)
+  })
+</script>

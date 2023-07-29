@@ -1,0 +1,225 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+  <link rel="stylesheet" href="../css/styles.css">
+  <script src="https://d3js.org/d3.v6.js"></script>
+  <script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2113.6">
+  <style type="text/css">
+    p.p1 {
+      margin: 0.0px 0.0px 0.0px 0.0px;
+      font: 17.0px Courier;
+      color: #eae96f;
+      -webkit-text-stroke: #eae96f;
+      background-color: #2e2e2e
+    }
+
+    span.s1 {
+      font-kerning: none
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Total Emissions in the United States from 1990 - 2020</h1>
+  <p>
+    This scatterplot visualizes the total CO2 related emissions in the United States over the course of around 30 years.
+    Try filtering a range of years to spot patterns,
+    anomolies, and better understand the changes in emissions over time.
+  </p>
+  <div class="row">
+    <p>Enter Minimum Year:</p>
+    <input type="number" id="minYear" name="minYear" min="1990" max="2020" value="1990">
+    <p>Enter Maximum Year:</p>
+    <input type="number" id="maxYear" name="maxYear" min="1990" max="2020" value="2020">
+    <button id="submit">Submit</button>
+  </div>
+  <svg id="scatterplot"></svg>
+  <div id="tooltip"></div>
+
+  <p>
+    This visualization confirms an increasing trend in nationwide CO2 Emissions from Agro-Food processes.This
+    can have major implications for climate change, global health, and the future environment of our planet.
+  </p>
+
+  <footer>
+    <h3 style="text-align: center;">4</h3>
+    <button onclick="location.href='third.html'" type="button">
+      Prev
+    </button>
+  </footer>
+</body>
+
+<script>
+  let minYear = 1990;
+  let maxYear = 2020;
+
+  const getData = async (minYear, maxYear) => {
+    try {
+      let response = await d3.csv('../data/Agrofood_co2_emission.csv', function (d) {
+        if ((d["Area"] == "United States of America") && ((d["Year"] >= minYear) && (d["Year"] <= maxYear))) {
+          return d;
+        }
+      })
+
+      return response
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+
+  getData(minYear, maxYear).then((data) => {
+    // Resource: https://d3-graph-gallery.com/graph/scatter_tooltip.html
+    const margin = { top: 10, right: 30, bottom: 30, left: 60 }
+    const width = 750 - margin.left - margin.right;
+    const height = 650 - margin.top - margin.bottom;
+
+    const svg = d3.select(`#scatterplot`)
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom + 15)
+      .append("g")
+      .attr("transform", `translate(${margin.left + 15}, ${margin.top})`)
+
+
+    const xScale = d3.scaleLinear().domain([minYear, maxYear]).range([0, width])
+    svg.append('g')
+      .attr("transform", `translate(0, ${height})`)
+      .call(d3.axisBottom(xScale).tickFormat(d3.format("d")));
+
+    const yScale = d3.scaleLinear()
+      .domain([0, 1200000])
+      .range([height, 0])
+    svg.append('g').call(d3.axisLeft(yScale))
+
+    svg.append("text")
+      .attr("transform",
+        "translate(" + (width / 2) + " ," +
+        (height + margin.top + 25) + ")")
+      .style("text-anchor", "middle")
+      .text("Year");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0 - margin.left - 10)
+      .attr("x", 0 - (height / 2))
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .text("Total Emission (in kilotons of CO2)")
+
+    const tooltip = d3.select("#tooltip");
+    let points = svg.append('g')
+      .selectAll('points')
+      .data(data)
+      .enter()
+      .append("circle")
+      .attr("cx", (d) => xScale(d['Year']))
+      .attr("cy", (d) => yScale(d['total_emission']))
+      .attr("r", 7)
+      .style("fill", "red")
+      .style("opacity", 0.7)
+      .style("stroke", "white")
+
+    points.on("mouseover", function (event, d) {
+      const tooltipContent = `Year: ${d['Year']} <br/> Total Emission: ${d['total_emission']} kt of CO2`;
+      tooltip
+        .style("display", "block")
+        .style("flexDirection", "column")
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 20) + "px")
+        .html(tooltipContent);
+    })
+      .on("mouseout", function () {
+        tooltip.style("display", "none");
+      });
+
+    const annotations = [
+      {
+        note: {
+          label: "Jump in total CO2 emissions as more industrial processes develop",
+          title: "2015 -> 2016",
+          align: "middle",
+          wrap: 200,
+          padding: 10
+        },
+        x: 647,
+        y: 110,
+        dx: 0,
+        dy: 300
+      }
+    ]
+
+    const makeAnnotations = d3.annotation().annotations(annotations)
+    d3.select("#scatterplot").append("g").call(makeAnnotations)
+
+    function update(minYear, maxYear) {
+      const dataFilter = data.filter(function (d) { return (d['Year'] >= minYear && d['Year'] <= maxYear) })
+      if (!(minYear <= 2016 && 2016 <= maxYear)) {
+        d3.select(".annotations").attr("display", "none")
+      } else {
+        d3.select(".annotations").attr("display", "block")
+      }
+
+      points
+        .data(data)
+        .transition()
+        .duration(1000)
+        .attr("cx", (d) => xScale(d['Year']))
+        .attr("cy", (d) => yScale(d['total_emission']))
+        .attr("r", 7)
+        .style("fill", "red")
+        .style("opacity", 0)
+        .style("stroke", "white")
+
+      points
+        .data(dataFilter)
+        .transition()
+        .duration(1000)
+        .attr("cx", (d) => xScale(d['Year']))
+        .attr("cy", (d) => yScale(d['total_emission']))
+        .attr("r", 7)
+        .style("fill", "red")
+        .style("opacity", 0.7)
+        .style("stroke", "white")
+
+      points.on("mouseover", function (event, d) {
+        if (d['Year'] >= minYear && d['Year'] <= maxYear) {
+          const tooltipContent = `Year: ${d['Year']} <br/> Total Emission: ${d['total_emission']} kt of CO2`;
+          tooltip
+            .style("display", "block")
+            .style("flexDirection", "column")
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 20) + "px")
+            .html(tooltipContent);
+        } else {
+          tooltip.style("display", "none");
+        }
+
+      })
+        .on("mouseout", function () {
+          tooltip.style("display", "none");
+        });
+    }
+
+    d3.select("#submit").on("click", function (event, d) {
+      minEl = document.getElementById('minYear')
+      maxEl = document.getElementById('maxYear')
+      let minYear = Math.max(1990, minEl.value)
+      let maxYear = Math.min(2020, maxEl.value)
+      // minEl.value = minYear
+      // maxEl.value = maxYear
+
+      update(minYear, maxYear)
+    })
+  })
+
+
+
+</script>
+
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+  <link rel="stylesheet" href="../css/styles.css">
+  <script src="https://d3js.org/d3.v6.js"></script>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2113.6">
+  <style type="text/css">
+    p.p1 {
+      margin: 0.0px 0.0px 0.0px 0.0px;
+      font: 17.0px Courier;
+      color: #eae96f;
+      -webkit-text-stroke: #eae96f;
+      background-color: #2e2e2e
+    }
+
+    span.s1 {
+      font-kerning: none
+    }
+  </style>
+</head>
+
+<body>
+  <h1 id="header">Average of Emission Types in United States from 2010 - 2020</h1>
+  <p class="indent">
+    This donut chart displays the averages of the most common emission types in the United States over the past decade.
+    Try hovering over the different sections or 'slices' to see exactly how many kilotons of CO2 is emitted.
+  </p>
+  <div id="donut"></div>
+  <div id="tooltip"></div>
+  <p class="indent">
+    From this chart you can see that IPPU, also known as emissions from Industrial Processes and Product Use, accounts
+    for more than half of emissions in the United States in the past decade.
+  </p>
+  <div class="row">
+    <button onclick="location.href='index.html'" type="button">
+      Prev
+    </button>
+    <h3>2</h3>
+    <button onclick="location.href='third.html'" type="button">
+      Next
+    </button>
+  </div>
+</body>
+
+<script>
+  d3.csv('../data/Agrofood_co2_emission.csv', function (d) {
+    if ((d["Area"] == "United States of America") && ((d["Year"] >= 2010) && (d["Year"] <= 2020))) {
+      return d;
+    }
+  }).then(function (data) {
+    const savannah_fires_avg = d3.mean(data, d => d["Savanna fires"])
+    const forest_fires_avg = d3.mean(data, d => d["Forest fires"])
+    const crop_residue_avg = d3.mean(data, d => d["Crop Residues"])
+    const rice_cultivation_avg = d3.mean(data, d => d["Rice Cultivation"])
+    const drained_organic_soils_avg = d3.mean(data, d => d["Drained organic soils (CO2)"])
+    const pesticide_manufacturing_avg = d3.mean(data, d => d["Pesticides Manufacturing"])
+    const food_processing_avg = d3.mean(data, d => d["Food Processing"])
+    const fertilizer_manufacturing_avg = d3.mean(data, d => d["Fertilizers Manufacturing"])
+    const IPPU_avg = d3.mean(data, d => d["IPPU"])
+    const manure_soils_avg = d3.mean(data, d => d["Manure applied to Soils"])
+    const manure_pasture_avg = d3.mean(data, d => d["Manure left on Pasture"])
+    const manure_mgmt_avg = d3.mean(data, d => d["Manure Management"])
+    const fires_organic_soils_avg = d3.mean(data, d => d["Fires in organic soils"])
+    const fires_humid_avg = d3.mean(data, d => d["Fires in humid tropical forests"])
+    // const emission = d3.mean(data, d => d["total_emission"])
+
+    const emission_data = {
+      "Drained organic soils (CO2)": drained_organic_soils_avg,
+      "Pesticides Manufacturing": pesticide_manufacturing_avg,
+      "Food Processing": food_processing_avg,
+      "Rice Cultivation": rice_cultivation_avg,
+      "Savanna fires": savannah_fires_avg,
+      "Fertilizers Manufacturing": fertilizer_manufacturing_avg,
+      "Forest fires": forest_fires_avg,
+      "IPPU": IPPU_avg,
+      "Fires in humid tropical forests": fires_humid_avg,
+      "Manure applied to Soils": manure_soils_avg,
+      "Manure left on Pasture": manure_pasture_avg,
+      "Fires in organic soils": fires_organic_soils_avg,
+      "Manure Management": manure_mgmt_avg,
+      "Crop Residues": crop_residue_avg,
+    }
+
+    // Resource used: https://d3-graph-gallery.com/graph/pie_annotation.html
+
+    const width = 900;
+    const height = 600;
+    const margin = 40;
+
+    const svg = d3
+      .select("#donut")
+      .append("svg")
+      .attr("height", height)
+      .attr("width", width)
+      .append("g")
+      .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+    const colorScale = d3.scaleOrdinal().range([
+      '#ED760E',
+      '#BDECB6',
+      '#2A6478',
+      '#1E5945',
+      '#898176',
+      '#C93C20',
+      '#C35831',
+      '#8E402A',
+      '#A98307',
+      '#F8F32B',
+      '#922B3E',
+      '#015D52',
+      '#A03472',
+      '#3E5F8A'
+    ]);
+
+    const color = d3.scaleOrdinal()
+      .range(d3.schemeSet1);
+
+    const pie = d3.pie().sort(null).value((d) => {
+      if (d[1] < 2000) {
+        return (d[1] + 1) * 5
+      } else {
+        return d[1]
+      }
+    })
+    const pieData = pie(Object.entries(emission_data))
+
+    const radius = Math.min(width, height) / 2 - margin
+    const arcs = d3.arc().innerRadius(radius * 0.5).outerRadius(radius * 0.8)
+    const outerArc = d3.arc().innerRadius(radius * 0.9).outerRadius(radius * 0.9)
+
+    const tooltip = d3.select("#tooltip");
+    svg.selectAll('slices')
+      .data(pieData)
+      .join('path')
+      .attr('d', arcs)
+      .attr('fill', (d, i) => color(i))
+      .attr("stroke", "white")
+      .style("stroke-width", "2px")
+      .style("opacity", 0.7)
+      .on("mouseover", function (event, d) {
+        const tooltipContent = `Type: ${d.data[0]} <br/> Avg: ${d.data[1]} kilotons (kt)`;
+        tooltip
+          .style("display", "block")
+          .style("flexDirection", "column")
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 20) + "px")
+          .html(tooltipContent);
+      })
+      .on("mouseout", function () {
+        tooltip.style("display", "none");
+      });
+
+    svg
+      .selectAll('polylines')
+      .data(pieData)
+      .join('polyline')
+      .attr("stroke", "black")
+      .style("fill", "none")
+      .attr("stroke-width", 1)
+      .attr('points', function (d) {
+        const posA = arcs.centroid(d)
+        const posB = outerArc.centroid(d);
+        const posC = outerArc.centroid(d);
+        const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+        posC[0] = radius * 0.95 * (midangle < Math.PI ? 1 : -1);
+        return [posA, posB, posC]
+      })
+
+    svg
+      .selectAll('labels')
+      .data(pieData)
+      .join('text')
+      .text((d) => d.data[0])
+      .attr('transform', function (d) {
+        const pos = outerArc.centroid(d);
+        const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+        pos[0] = radius * 0.99 * (midangle < Math.PI ? 1 : -1);
+        return `translate(${pos})`;
+      })
+      .style('text-anchor', function (d) {
+        const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
+        return (midangle < Math.PI ? 'start' : 'end')
+      })
+
+  })
+</script>
+
+</html>
